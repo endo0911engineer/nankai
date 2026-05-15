@@ -1,30 +1,52 @@
 {
   "expo": {
-    "name": "nankai-app",
+    "name": "あと何回",
     "slug": "nankai-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "scheme": "nankai",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#FBF8F3"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.nankai.app",
+      "infoPlist": {
+        "CFBundleDisplayName": "あと何回"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#FBF8F3"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "package": "com.nankai.app"
     },
     "web": {
-      "favicon": "./assets/favicon.png"
-    }
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "思い出の写真を保存するために、写真へのアクセスを許可してください。"
+        }
+      ],
+      "expo-font",
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "思い出のカードを保存するために、写真へのアクセスを許可してください。"
+        }
+      ]
+    ]
   }
 }
