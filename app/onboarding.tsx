@@ -47,12 +47,6 @@ export default function OnboardingScreen() {
             大切な人と、{"\n"}あと何回{"\n"}会えるだろう。
           </Text>
         </Animated.View>
-
-        <Animated.View style={{ opacity: fadeSubtitle }}>
-          <Text style={styles.subtitle}>
-            残り時間ではなく、{"\n"}大切な回数を可視化する。
-          </Text>
-        </Animated.View>
       </View>
 
       <Animated.View style={[styles.buttonWrapper, { opacity: fadeButton }]}>
