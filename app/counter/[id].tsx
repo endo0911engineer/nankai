@@ -16,7 +16,7 @@ import { captureRef } from "react-native-view-shot";
 import * as MediaLibrary from "expo-media-library";
 import * as Sharing from "expo-sharing";
 import { Counter, Memory } from "../../types";
-import { getCounter, getMemories, deleteCounter } from "../../db/database";
+import { getCounter, getMemories, deleteCounter, deleteMemory } from "../../db/database";
 import { calcRemainingTimes, currentAge, formatDate } from "../../utils/calculations";
 import { useCountUp } from "../../hooks/useCountUp";
 import ShareCard from "../../components/ShareCard";
@@ -160,7 +160,23 @@ export default function CounterDetailScreen() {
           <View style={styles.memoriesSection}>
             <Text style={styles.sectionTitle}>思い出</Text>
             <View style={styles.memoriesList}>
-              {memories.map((m) => <MemoryItem key={m.id} memory={m} />)}
+              {memories.map((m) => (
+                <MemoryItem
+                  key={m.id}
+                  memory={m}
+                  onDelete={() => {
+                    Alert.alert("削除しますか？", "この思い出を削除します。", [
+                      { text: "キャンセル", style: "cancel" },
+                      {
+                        text: "削除", style: "destructive", onPress: async () => {
+                          await deleteMemory(m.id);
+                          setMemories((prev) => prev.filter((x) => x.id !== m.id));
+                        }
+                      },
+                    ]);
+                  }}
+                />
+              ))}
             </View>
           </View>
         ) : (
@@ -229,7 +245,7 @@ function HeroCard({ counter, remaining }: { counter: Counter; remaining: number 
   );
 }
 
-function MemoryItem({ memory }: { memory: Memory }) {
+function MemoryItem({ memory, onDelete }: { memory: Memory; onDelete: () => void }) {
   return (
     <View style={styles.memoryCard}>
       {memory.photo_uri && (
@@ -237,7 +253,12 @@ function MemoryItem({ memory }: { memory: Memory }) {
       )}
       <View style={styles.memoryBody}>
         {memory.memo && <Text style={styles.memoryMemo}>{memory.memo}</Text>}
-        <Text style={styles.memoryDate}>{formatDate(memory.met_at)}</Text>
+        <View style={styles.memoryFooter}>
+          <Text style={styles.memoryDate}>{formatDate(memory.met_at)}</Text>
+          <Pressable onPress={onDelete} hitSlop={8}>
+            <Ionicons name="trash-outline" size={16} color="#B0A89E" />
+          </Pressable>
+        </View>
       </View>
     </View>
   );
@@ -304,6 +325,7 @@ const styles = StyleSheet.create({
   memoryPhoto: { width: "100%", height: 220 },
   memoryBody: { padding: 14, gap: 6 },
   memoryMemo: { fontFamily: "ZenMaruGothic_400Regular", fontSize: 15, color: "#2C2C2C", lineHeight: 24 },
+  memoryFooter: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   memoryDate: { fontFamily: "ZenMaruGothic_400Regular", fontSize: 13, color: "#B0A89E" },
   noMemories: { padding: 24, alignItems: "center" },
   noMemoriesText: { fontFamily: "ZenMaruGothic_400Regular", fontSize: 14, color: "#B0A89E", textAlign: "center", lineHeight: 24 },
