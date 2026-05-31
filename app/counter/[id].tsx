@@ -232,14 +232,20 @@ function HeroCard({ counter, remaining }: { counter: Counter; remaining: number 
         <Text style={styles.heroCount}>{animated}</Text>
         <Text style={styles.heroSuffix}>回</Text>
       </View>
-      <Text style={styles.heroEvent}>{counter.event_name}できる</Text>
+      <Text style={styles.heroEvent}>{counter.event_name}</Text>
       <View style={styles.heroMeta}>
         {counter.last_met_at && (
           <Text style={styles.metaText}>最後に会った日：{formatDate(counter.last_met_at)}</Text>
         )}
-        <Text style={styles.metaText}>
-          現在{currentAge(counter.birth_year)}歳 / 平均寿命{counter.person_lifespan}歳
-        </Text>
+        {counter.mode === "period" && counter.end_date ? (
+          <Text style={styles.metaText}>
+            {formatDate(counter.end_date)}まで
+          </Text>
+        ) : (
+          <Text style={styles.metaText}>
+            現在{currentAge(counter.birth_year)}歳 / 平均寿命{counter.person_lifespan}歳
+          </Text>
+        )}
       </View>
     </View>
   );

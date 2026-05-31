@@ -5,6 +5,12 @@ export function currentAge(birthYear: number): number {
 }
 
 export function calcRemainingTimes(counter: Counter): number {
+  if (counter.mode === "period" && counter.end_date) {
+    const now = new Date();
+    const end = new Date(counter.end_date);
+    const yearsLeft = Math.max(0, (end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
+    return Math.max(0, Math.ceil(yearsLeft * counter.frequency_per_year - 0.01));
+  }
   const age = currentAge(counter.birth_year);
   const yearsLeft = Math.max(0, counter.person_lifespan - age);
   return Math.floor(yearsLeft * counter.frequency_per_year);

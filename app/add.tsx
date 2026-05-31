@@ -26,28 +26,43 @@ export default function AddScreen() {
   const [personName, setPersonName] = useState("");
   const [eventName, setEventName] = useState("");
   const [frequencyPerYear, setFrequencyPerYear] = useState<number | null>(null);
+  const [customFreq, setCustomFreq] = useState("");
   const [personAge, setPersonAge] = useState("");
   const [personLifespan, setPersonLifespan] = useState(String(DEFAULT_LIFESPAN));
   const [customPerson, setCustomPerson] = useState("");
   const [customEvent, setCustomEvent] = useState("");
+  const [mode, setMode] = useState<"lifespan" | "period">("lifespan");
+  const [periodValue, setPeriodValue] = useState("");
+  const [periodUnit, setPeriodUnit] = useState<"年" | "日">("年");
 
   const effectivePerson = personName || customPerson;
   const effectiveEvent = eventName || customEvent;
+  const effectiveFreq = customFreq ? parseFloat(customFreq) : frequencyPerYear;
 
   const preview = () => {
-    if (!effectivePerson || !effectiveEvent || !frequencyPerYear || !personAge) return null;
+    if (!effectivePerson || !effectiveEvent || !effectiveFreq) return null;
+    if (mode === "period") {
+      const val = parseFloat(periodValue);
+      if (isNaN(val) || val <= 0) return null;
+      const years = periodUnit === "日" ? val / 365.25 : val;
+      const remaining = Math.max(0, Math.ceil(years * effectiveFreq - 0.01));
+      return `${effectivePerson}とあと${remaining}回${effectiveEvent}`;
+    }
     const age = parseInt(personAge, 10);
     const lifespan = parseInt(personLifespan, 10) || DEFAULT_LIFESPAN;
     if (isNaN(age)) return null;
-    const remaining = Math.max(0, Math.floor((lifespan - age) * frequencyPerYear));
-    return `${effectivePerson}とあと${remaining}回${effectiveEvent}できる`;
+    const remaining = Math.max(0, Math.floor((lifespan - age) * effectiveFreq));
+    return `${effectivePerson}とあと${remaining}回${effectiveEvent}`;
   };
 
   const canNext = () => {
     if (step === 1) return effectivePerson.trim().length > 0;
     if (step === 2) return effectiveEvent.trim().length > 0;
-    if (step === 3) return frequencyPerYear !== null;
-    if (step === 4) return personAge.trim().length > 0;
+    if (step === 3) return effectiveFreq !== null && !isNaN(effectiveFreq!) && effectiveFreq! > 0;
+    if (step === 4) {
+      if (mode === "period") return periodValue.trim().length > 0 && parseFloat(periodValue) > 0;
+      return personAge.trim().length > 0;
+    }
     return false;
   };
 
@@ -61,20 +76,43 @@ export default function AddScreen() {
   };
 
   const handleSave = async () => {
-    const age = parseInt(personAge, 10);
-    const lifespan = parseInt(personLifespan, 10) || DEFAULT_LIFESPAN;
-    if (isNaN(age) || age < 0 || age > 130) {
-      Alert.alert("年齢を正しく入力してください");
-      return;
+    let birthYear = 0;
+    let lifespan = 0;
+    let endDate: string | null = null;
+
+    if (mode === "period") {
+      const val = parseFloat(periodValue);
+      if (isNaN(val) || val <= 0) {
+        Alert.alert("期間を正しく入力してください");
+        return;
+      }
+      const now = new Date();
+      if (periodUnit === "日") {
+        now.setDate(now.getDate() + Math.ceil(val));
+      } else {
+        now.setFullYear(now.getFullYear() + Math.floor(val));
+        now.setMonth(now.getMonth() + Math.round((val % 1) * 12));
+      }
+      endDate = now.toISOString().split("T")[0];
+    } else {
+      const age = parseInt(personAge, 10);
+      lifespan = parseInt(personLifespan, 10) || DEFAULT_LIFESPAN;
+      if (isNaN(age) || age < 0 || age > 130) {
+        Alert.alert("年齢を正しく入力してください");
+        return;
+      }
+      birthYear = new Date().getFullYear() - age;
     }
-    const birthYear = new Date().getFullYear() - age;
+
     try {
       const newId = await createCounter({
         person_name: effectivePerson.trim(),
         event_name: effectiveEvent.trim(),
-        frequency_per_year: frequencyPerYear!,
+        frequency_per_year: effectiveFreq!,
         birth_year: birthYear,
         person_lifespan: lifespan,
+        mode,
+        end_date: endDate,
         last_met_at: null,
       });
       if (fromOnboarding === "true") {
@@ -126,7 +164,7 @@ export default function AddScreen() {
             />
             <TextInput
               style={styles.input}
-              placeholder="自由入力..."
+              placeholder="例：一緒にゴルフできる"
               placeholderTextColor="#C0B8B0"
               value={customEvent}
               onChangeText={(t) => { setCustomEvent(t); setEventName(""); }}
@@ -138,35 +176,101 @@ export default function AddScreen() {
           <StepView title={`どれくらいの頻度で\n${effectiveEvent}していますか？`}>
             <ChipGroup
               items={FREQUENCY_PRESETS}
-              selected={frequencyPerYear !== null ? String(frequencyPerYear) : ""}
-              onSelect={(v) => setFrequencyPerYear(Number(v))}
+              selected={!customFreq && frequencyPerYear !== null ? String(frequencyPerYear) : ""}
+              onSelect={(v) => { setFrequencyPerYear(Number(v)); setCustomFreq(""); }}
               valueKey="value"
             />
+            <View style={styles.customFreqRow}>
+              <TextInput
+                style={[styles.input, styles.customFreqInput, customFreq ? styles.customFreqActive : null]}
+                value={customFreq}
+                onChangeText={setCustomFreq}
+                placeholder="自由入力（年間回数）"
+                placeholderTextColor="#C0B8B0"
+                keyboardType="decimal-pad"
+              />
+              <Text style={styles.freqUnit}>回/年</Text>
+            </View>
           </StepView>
         )}
 
         {step === 4 && (
-          <StepView title={`${effectivePerson}は今何歳ですか？`}>
-            <TextInput
-              style={[styles.input, styles.ageInput]}
-              placeholder="例：68"
-              placeholderTextColor="#C0B8B0"
-              value={personAge}
-              onChangeText={setPersonAge}
-              keyboardType="number-pad"
-              maxLength={3}
-            />
-            <View style={styles.lifespanRow}>
-              <Text style={styles.lifespanLabel}>平均寿命</Text>
-              <TextInput
-                style={styles.lifespanInput}
-                value={personLifespan}
-                onChangeText={setPersonLifespan}
-                keyboardType="number-pad"
-                maxLength={3}
-              />
-              <Text style={styles.lifespanLabel}>歳</Text>
+          <StepView title={`${effectivePerson}との関係は\nどんな感じですか？`}>
+            <View style={styles.modeToggle}>
+              <Pressable
+                style={[styles.modeBtn, mode === "lifespan" && styles.modeBtnActive]}
+                onPress={() => setMode("lifespan")}
+              >
+                <Text style={[styles.modeBtnText, mode === "lifespan" && styles.modeBtnTextActive]}>
+                  寿命で計算
+                </Text>
+                <Text style={[styles.modeSubText, mode === "lifespan" && styles.modeSubTextActive]}>
+                  年齢・平均寿命から
+                </Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modeBtn, mode === "period" && styles.modeBtnActive]}
+                onPress={() => setMode("period")}
+              >
+                <Text style={[styles.modeBtnText, mode === "period" && styles.modeBtnTextActive]}>
+                  期間で計算
+                </Text>
+                <Text style={[styles.modeSubText, mode === "period" && styles.modeSubTextActive]}>
+                  転勤・卒業など
+                </Text>
+              </Pressable>
             </View>
+
+            {mode === "lifespan" ? (
+              <>
+                <TextInput
+                  style={[styles.input, styles.ageInput]}
+                  placeholder={`${effectivePerson}の年齢　例：68`}
+                  placeholderTextColor="#C0B8B0"
+                  value={personAge}
+                  onChangeText={setPersonAge}
+                  keyboardType="number-pad"
+                  maxLength={3}
+                />
+                <View style={styles.lifespanRow}>
+                  <Text style={styles.lifespanLabel}>平均寿命</Text>
+                  <TextInput
+                    style={styles.lifespanInput}
+                    value={personLifespan}
+                    onChangeText={setPersonLifespan}
+                    keyboardType="number-pad"
+                    maxLength={3}
+                  />
+                  <Text style={styles.lifespanLabel}>歳</Text>
+                </View>
+              </>
+            ) : (
+              <View style={styles.periodRow}>
+                <Text style={styles.lifespanLabel}>あと</Text>
+                <TextInput
+                  style={styles.lifespanInput}
+                  placeholder={periodUnit === "年" ? "3" : "180"}
+                  placeholderTextColor="#C0B8B0"
+                  value={periodValue}
+                  onChangeText={setPeriodValue}
+                  keyboardType="decimal-pad"
+                  maxLength={5}
+                />
+                <View style={styles.unitToggle}>
+                  {(["年", "日"] as const).map((u) => (
+                    <Pressable
+                      key={u}
+                      style={[styles.unitBtn, periodUnit === u && styles.unitBtnActive]}
+                      onPress={() => setPeriodUnit(u)}
+                    >
+                      <Text style={[styles.unitBtnText, periodUnit === u && styles.unitBtnTextActive]}>
+                        {u}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+            )}
 
             {preview() && (
               <View style={styles.previewCard}>
@@ -327,6 +431,83 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
     paddingVertical: 20,
+  },
+  customFreqRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  customFreqInput: {
+    flex: 1,
+    paddingVertical: 10,
+  },
+  customFreqActive: {
+    borderColor: "#C4956A",
+  },
+  freqUnit: {
+    fontSize: 15,
+    color: "#9B9B9B",
+  },
+  modeToggle: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  modeBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    borderWidth: 1.5,
+    borderColor: "#E8E2DA",
+    backgroundColor: "#FFFFFF",
+    gap: 3,
+  },
+  modeBtnActive: {
+    backgroundColor: "#C4956A",
+    borderColor: "#C4956A",
+  },
+  modeBtnText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#5C5552",
+  },
+  modeBtnTextActive: {
+    color: "#FFFFFF",
+  },
+  modeSubText: {
+    fontSize: 11,
+    color: "#B0A89E",
+  },
+  modeSubTextActive: {
+    color: "rgba(255,255,255,0.8)",
+  },
+  periodRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  unitToggle: {
+    flexDirection: "row",
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#E8E2DA",
+    overflow: "hidden",
+  },
+  unitBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: "#FFFFFF",
+  },
+  unitBtnActive: {
+    backgroundColor: "#C4956A",
+  },
+  unitBtnText: {
+    fontSize: 15,
+    fontWeight: "500",
+    color: "#5C5552",
+  },
+  unitBtnTextActive: {
+    color: "#FFFFFF",
   },
   lifespanRow: {
     flexDirection: "row",

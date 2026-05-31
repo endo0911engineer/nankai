@@ -19,7 +19,7 @@ export default function ShareCard({ counter }: Props) {
           <Text style={styles.count}>{remaining}</Text>
           <Text style={styles.suffix}>回</Text>
         </View>
-        <Text style={styles.event}>{counter.event_name}できる</Text>
+        <Text style={styles.event}>{counter.event_name}</Text>
       </View>
       <Text style={styles.appName}>あと何回</Text>
     </View>

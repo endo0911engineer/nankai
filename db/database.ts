@@ -11,7 +11,7 @@ export async function getDb(): Promise<SQLite.SQLiteDatabase> {
   return db;
 }
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 async function initDb(db: SQLite.SQLiteDatabase): Promise<void> {
   await db.runAsync("PRAGMA journal_mode = WAL");
@@ -19,8 +19,7 @@ async function initDb(db: SQLite.SQLiteDatabase): Promise<void> {
   const row = await db.getFirstAsync<{ user_version: number }>("PRAGMA user_version");
   const version = row?.user_version ?? 0;
 
-  if (version < SCHEMA_VERSION) {
-    // 旧テーブルを削除して新スキーマで再作成
+  if (version < 2) {
     await db.runAsync("DROP TABLE IF EXISTS memories");
     await db.runAsync("DROP TABLE IF EXISTS counters");
     await db.runAsync(`
@@ -46,7 +45,13 @@ async function initDb(db: SQLite.SQLiteDatabase): Promise<void> {
         FOREIGN KEY (counter_id) REFERENCES counters(id) ON DELETE CASCADE
       )
     `);
-    await db.runAsync(`PRAGMA user_version = ${SCHEMA_VERSION}`);
+    await db.runAsync("PRAGMA user_version = 2");
+  }
+
+  if (version < 3) {
+    await db.runAsync("ALTER TABLE counters ADD COLUMN mode TEXT NOT NULL DEFAULT 'lifespan'");
+    await db.runAsync("ALTER TABLE counters ADD COLUMN end_date TEXT");
+    await db.runAsync("PRAGMA user_version = 3");
   }
 }
 
@@ -63,9 +68,9 @@ export async function getCounter(id: number): Promise<Counter | null> {
 export async function createCounter(data: Omit<Counter, "id" | "created_at">): Promise<number> {
   const db = await getDb();
   const result = await db.runAsync(
-    `INSERT INTO counters (person_name, event_name, frequency_per_year, birth_year, person_lifespan, last_met_at)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [data.person_name, data.event_name, data.frequency_per_year, data.birth_year, data.person_lifespan, data.last_met_at ?? null]
+    `INSERT INTO counters (person_name, event_name, frequency_per_year, birth_year, person_lifespan, mode, end_date, last_met_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [data.person_name, data.event_name, data.frequency_per_year, data.birth_year, data.person_lifespan, data.mode ?? "lifespan", data.end_date ?? null, data.last_met_at ?? null]
   );
   return result.lastInsertRowId;
 }

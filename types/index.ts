@@ -5,6 +5,8 @@ export type Counter = {
   frequency_per_year: number;
   birth_year: number;
   person_lifespan: number;
+  mode: "lifespan" | "period";
+  end_date: string | null;
   last_met_at: string | null;
   created_at: string;
 };
